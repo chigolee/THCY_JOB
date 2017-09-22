@@ -253,7 +253,6 @@ DEF_UINT32		GNSS_Store_Uint32[2];			//转换用
 /*--------GNSS接收机，数据接收任务---------*/
 void Task_GNSS_Recieve()
 {
-
 //接收数据，Trans_GNSS_Recieve[120]
 if(UARxFBufPo!=UARxFBufPi)
 	{
