@@ -69,33 +69,10 @@ DEF_UINT16	Vector_CRC_Recieve=0;
 
  /*--------------矢量装置数据接收----------------*/
  void Task_Vector_Recieve()
- {
-if(UGRxFBufPo!=UGRxFBufPi)
-	{
-	bcopy(&(UGRxFBuf[UGRxFBufPo][0]),&(Vector_Data_Recieve[0]),25);		UGRxFBufPo=(UGRxFBufPo+1)%UG_RxF_BufLen;	 
-
-	//CRC校验
-	Vector_CRC_Recieve=(Vector_Data_Recieve[24])*256+Vector_Data_Recieve[23];
-
-	//处理数据
-	if((Vector_Data_Recieve[0]==UG_DH0)&&(Vector_Data_Recieve[1]==UG_DH1_1)&&(Vector_CRC_Recieve==modbus_crc16((DEF_UINT8*)&(Vector_Data_Recieve[0]),23)))
-		{
- 		//超时计数置零
-		DelaySecond_Healthy[2][3]=0; 
-	
-		bcopy(&(Vector_Data_Recieve[3]),&(TransNoHead_Vector_Recieve),20);
-		g_YC_Package.TJ.VectorAngle=(DEF_INT16)(ChangeWordByte((DEF_UINT16)(TransNoHead_Vector_Recieve.A1_VectorAngle)));
-		g_YC_Package.TJ.VectorActualN=(DEF_INT16)(ChangeWordByte((DEF_UINT16)(TransNoHead_Vector_Recieve.A1_VectorActualN)));		
-		g_YCLowPack.JC01.VectorRadiatorTemp=(DEF_INT16)(ChangeWordByte((DEF_UINT16)(TransNoHead_Vector_Recieve.A1_VectorRadiatorTemp)));
-		g_YC_Package.TJ.VectorMainwireVol=(DEF_INT32)((DEF_INT16)(ChangeWordByte(TransNoHead_Vector_Recieve.A1_VectorMainwireVol))/10.0);
-		g_YC_Package.TJ.VectorCurrent=(DEF_INT16)(ChangeWordByte(TransNoHead_Vector_Recieve.A1_VectorCurrent));
-		g_YC_Package.TJ.VectorState=ChangeWordByte((DEF_UINT16)(TransNoHead_Vector_Recieve.A1_VectorState));
-
-		}
-
-	}
-
- }
+ 	{
+ 	int a=0;
+	int b=0;
+ 	}
 
 
 
