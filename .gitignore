@@ -10,7 +10,7 @@
 *.IAB
 *.IAD
 *.IMB
-*.IAD
+*.IMD
 *.PFI
 *.PO
 *.PR
@@ -20,4 +20,4 @@
 *.WK3
 
 #¹ýÂËÎÄ¼þ¼Ð
-FK_08.05\Project\STM32F2xx_StdPeriph_Template/MDK-ARM
+FK_08.05/Project/STM32F2xx_StdPeriph_Template/MDK-ARM
