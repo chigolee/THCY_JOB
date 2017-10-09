@@ -65,7 +65,130 @@ DEF_UINT16	A_ForBallColPressure=0;
 /*----------囊体采集数据接收，输入为采集器号1~4  -----------*/
 void Task_Ballonet_Operate(DEF_UINT8 Collector_NO)
 {
-}
+//接收缓存清零
+SignForBDReiceive=0x55;
+ByteCoForNTCJ=0;
+Ballonet_Data_Recieve[0]=0;
+Ballonet_Data_Recieve[1]=0;
+
+//根据采集器编号，到相应缓存中读取数据Ballonet_Data_Recieve[]
+switch(Collector_NO)
+	{
+	case 1:	{if(U5RxFBufPo!=U5RxFBufPi){SignForBDReiceive=0;ByteCoForNTCJ=U5RxFBuf[U5RxFBufPo][U5_RxF_Len];if(ByteCoForNTCJ>U5_RxF_Len){ByteCoForNTCJ=U5_RxF_Len;}bcopy(&(U5RxFBuf[U5RxFBufPo][0]),&(Ballonet_Data_Recieve[0]),ByteCoForNTCJ);U5RxFBufPo=(U5RxFBufPo+1)%U5_RxF_BufLen;}break;}
+	case 2:	{if(U6RxFBufPo!=U6RxFBufPi){SignForBDReiceive=0x55;ByteCoForNTCJ=U6RxFBuf[U6RxFBufPo][U6_RxF_Len];if(ByteCoForNTCJ>U6_RxF_Len){ByteCoForNTCJ=U6_RxF_Len;}bcopy(&(U6RxFBuf[U6RxFBufPo][0]),&(Ballonet_Data_Recieve[0]),ByteCoForNTCJ);U6RxFBufPo=(U6RxFBufPo+1)%U6_RxF_BufLen;}break;}
+	case 3:	{if(U7RxFBufPo!=U7RxFBufPi){SignForBDReiceive=1;ByteCoForNTCJ=U7RxFBuf[U7RxFBufPo][U7_RxF_Len];if(ByteCoForNTCJ>U7_RxF_Len){ByteCoForNTCJ=U7_RxF_Len;}bcopy(&(U7RxFBuf[U7RxFBufPo][0]),&(Ballonet_Data_Recieve[0]),ByteCoForNTCJ);U7RxFBufPo=(U7RxFBufPo+1)%U7_RxF_BufLen;}break;}
+	case 4:	{if(U8RxFBufPo!=U8RxFBufPi){SignForBDReiceive=0x55;ByteCoForNTCJ=U8RxFBuf[U8RxFBufPo][U8_RxF_Len];if(ByteCoForNTCJ>U8_RxF_Len){ByteCoForNTCJ=U8_RxF_Len;}bcopy(&(U8RxFBuf[U8RxFBufPo][0]),&(Ballonet_Data_Recieve[0]),ByteCoForNTCJ);U8RxFBufPo=(U8RxFBufPo+1)%U8_RxF_BufLen;}break;}
+
+	default: break;			
+	}
+
+// 1-北斗数据
+if((Ballonet_Data_Recieve[0]==U_5678_BDStart)&&(SignForBDReiceive<=1))
+	{
+	//校验
+	XorSumFromBD=0;
+	if(Ballonet_Data_Recieve[ByteCoForNTCJ-4]<0x3A)	//数字
+		{XorSumFromBD=XorSumFromBD+(Ballonet_Data_Recieve[ByteCoForNTCJ-4]-0x30)*0x10;}
+	else //字母
+		{XorSumFromBD=XorSumFromBD+(Ballonet_Data_Recieve[ByteCoForNTCJ-4]-0x37)*0x10;}
+
+	if(Ballonet_Data_Recieve[ByteCoForNTCJ-3]<0x3A)	//数字
+		{XorSumFromBD=XorSumFromBD+Ballonet_Data_Recieve[ByteCoForNTCJ-3]-0x30;}
+	else //字母
+		{XorSumFromBD=XorSumFromBD+Ballonet_Data_Recieve[ByteCoForNTCJ-3]-0x37;}
+
+	if(XorSumFromBD==XorSum1(&(Ballonet_Data_Recieve[1]),(ByteCoForNTCJ-6)))
+		{		
+		CountForComa=0;		//读到逗号数置零
+		for(iForReadBDByte=0;iForReadBDByte<ByteCoForNTCJ;iForReadBDByte++)
+			{
+			if(Ballonet_Data_Recieve[iForReadBDByte]==0x2C)
+				{
+				StringPosComa[CountForComa]=iForReadBDByte;
+				CountForComa++;				
+				if(CountForComa>=MaxTransComaCount){break;}
+				}		
+			}
+
+		if(CountForComa==MaxTransComaCount)
+			{
+			DelaySecond_Healthy[0][6+SignForBDReiceive]=0;		//北斗超时计数置零
+			//处理并存入遥测帧
+			BDTransFloat=TransAscllToFloat((DEF_UINT8*)&(Ballonet_Data_Recieve[(StringPosComa[6]+1)]), &BDAsclTransState);
+			if(BDAsclTransState==0){g_YC_Package.NT.BD_SatelitNum[SignForBDReiceive]=(DEF_INT32)(BDTransFloat);}
+
+			BDTransFloat=TransAscllToFloat((DEF_UINT8*)&(Ballonet_Data_Recieve[(StringPosComa[8]+1)]), &BDAsclTransState);
+			if(BDAsclTransState==0){g_YC_Package.NT.BD_Alt[SignForBDReiceive]=(DEF_INT32)(BDTransFloat);}
+
+			BDTransFloat=TransAscllToFloat((DEF_UINT8*)&(Ballonet_Data_Recieve[(StringPosComa[3]+4)]), &BDAsclTransState);
+			if(BDAsclTransState==0){g_YC_Package.NT.BD_Lon[SignForBDReiceive]=(Ballonet_Data_Recieve[(StringPosComa[3])+1]-0x30)*100+(Ballonet_Data_Recieve[(StringPosComa[3])+2]-0x30)*10+(Ballonet_Data_Recieve[(StringPosComa[3])+3]-0x30)+(BDTransFloat)/60;}
+
+			BDTransFloat=TransAscllToFloat((DEF_UINT8*)&(Ballonet_Data_Recieve[(StringPosComa[1]+3)]), &BDAsclTransState);
+			if(BDAsclTransState==0){g_YC_Package.NT.BD_Lat[SignForBDReiceive]=(Ballonet_Data_Recieve[(StringPosComa[1])+1]-0x30)*10+(Ballonet_Data_Recieve[(StringPosComa[1])+2]-0x30)+(BDTransFloat)/60;}
+
+			BDTransFloat=TransAscllToFloat((DEF_UINT8*)&(Ballonet_Data_Recieve[(StringPosComa[5]+1)]), &BDAsclTransState);
+			if(BDAsclTransState==0){g_YC_Package.NT.BD_state[SignForBDReiceive]=(DEF_INT32)(BDTransFloat);}
+
+			}
+		}
+	}
+
+// 2-采集器数据
+else if((Ballonet_Data_Recieve[0]==U_5678_DH0)&&(Ballonet_Data_Recieve[1]==U_5678_DH1))
+	{
+	//校验
+	if(	((Collector_NO==1)&&(Ballonet_Data_Recieve[2]%2==0))||
+		((Collector_NO==2)&&(Ballonet_Data_Recieve[2]%2==1))||
+		((Collector_NO==3)&&(Ballonet_Data_Recieve[2]%2==0))||
+		((Collector_NO==4)&&(Ballonet_Data_Recieve[2]%2==1)))
+		{
+		bcopy(&(Ballonet_Data_Recieve[0]),(DEF_UINT8*)&BallColReciPacage,sizeof(BallColReciPacage));
+		if(BallColReciPacage.XorChecksum==XorSum1((DEF_UINT8*)&(BallColReciPacage.FrameHead1),41))
+			{
+			DelaySecond_Healthy[2][3+Collector_NO]=0;	//超时计数置0
+
+	//处理-高低字节转换，高4位置0
+			BallColReciPacage.BoardTem=ChangeWordByte((DEF_UINT16)(BallColReciPacage.BoardTem))&0x0FFF;
+			
+			BallColReciPacage.Pressure=ChangeWordByte((DEF_UINT16)(BallColReciPacage.Pressure))&0x0FFF;
+			Y_ForBallColPressure=(((DEF_UINT16)BallColReciPacage.Parameter_1)<<8)|(((DEF_UINT16)BallColReciPacage.Parameter_2));
+			Y_ForBallColPressure=Y_ForBallColPressure&0x0FFF;
+			A_ForBallColPressure=1224-(((DEF_UINT8)BallColReciPacage.Parameter_1)>>4);
+			
+			BallColReciPacage.Vol28V=ChangeWordByte((DEF_UINT16)(BallColReciPacage.Vol28V))&0x0FFF;
+			BallColReciPacage.Vol16V=ChangeWordByte((DEF_UINT16)(BallColReciPacage.Vol16V))&0x0FFF;
+			BallColReciPacage.ValveCurrent=ChangeWordByte((DEF_UINT16)(BallColReciPacage.ValveCurrent))&0x0FFF;
+			BallColReciPacage.W100Temp=ChangeWordByte((DEF_UINT16)(BallColReciPacage.W100Temp))&0x0FFF;
+			BallColReciPacage.W50Temp=ChangeWordByte((DEF_UINT16)(BallColReciPacage.W50Temp))&0x0FFF;
+			
+			for(iForBallColTempra=0;iForBallColTempra<=5;iForBallColTempra++)
+				{BallColReciPacage.Temp[iForBallColTempra]=ChangeWordByte((DEF_UINT16)(BallColReciPacage.Temp[iForBallColTempra]))&0x0FFF;}			
+
+			BallColReciPacage.angle=ChangeWordByte((DEF_UINT16)(BallColReciPacage.angle))&0x0FFF;
+			
+	//转存
+			g_YC_Package.NT.CommandTransBack[Collector_NO-1]=BallColReciPacage.CommandReturn;
+			g_YCLowPack.JC01.BalnetColBoardTemp[Collector_NO-1]=(DEF_INT32)((BallColReciPacage.BoardTem-1616.0)/5.3248+27.0);
+			g_YC_Package.NT.Ballonet_PressureGap[Collector_NO-1]=(DEF_INT32)abs(((2000.0/(Y_ForBallColPressure-A_ForBallColPressure))*(BallColReciPacage.Pressure-A_ForBallColPressure)));			
+			g_YC_Package.NT.BalnetPowerVol[Collector_NO-1]=(DEF_INT32)(((BallColReciPacage.Vol28V*1.0-625.0)/66.0+10.0)*5.0);
+			g_YC_Package.NT.BalnetBatteryVol[Collector_NO-1]=(DEF_INT32)(((BallColReciPacage.Vol16V*1.0-625.0)/66.0+10.0)*5.0);
+			g_YC_Package.NT.Ballonet_ValveCur[Collector_NO-1]=(DEF_INT32)((BallColReciPacage.ValveCurrent*0.0021)*10.0);
+			
+			for(iForBallColTempra=0;iForBallColTempra<=5;iForBallColTempra++)
+				{g_YCLowPack.JC01.Ballonet_Temp[Collector_NO-1][iForBallColTempra]=(DEF_INT32)((50.0/(BallColReciPacage.W100Temp-BallColReciPacage.W50Temp)*(BallColReciPacage.Temp[5-iForBallColTempra]-BallColReciPacage.W100Temp)/0.39)*10);}
+
+			g_YC_Package.NT.ValvePowderState[Collector_NO-1]=BallColReciPacage.State_2;
+			g_YC_Package.NT.Ballonet_ValveAngle[Collector_NO-1]=(DEF_INT32)((360.0/4096.0)*BallColReciPacage.angle);
+			g_YC_Package.NT.Ballonet_ValveState[Collector_NO-1]=BallColReciPacage.ValveState;
+			g_YC_Package.NT.BallonetExploderState[Collector_NO-1]=BallColReciPacage.FirePointState;
+			g_YC_Package.NT.BallonetFireState[Collector_NO-1]=BallColReciPacage.FireCtlState;
+			g_YC_Package.NT.BallonetWorkState[Collector_NO-1]=BallColReciPacage.State_1;
+
+			}
+		}
+	}
+
+ }
 
 
 
