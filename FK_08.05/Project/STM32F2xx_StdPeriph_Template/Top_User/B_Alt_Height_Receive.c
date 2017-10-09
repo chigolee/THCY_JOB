@@ -45,10 +45,6 @@ void Modelname()
  /*---------气压高度表数据接收处理---------*/
 void Task_Alt_Height_Recieve()	
 {
-<<<<<<< HEAD
-	{
-=======
->>>>>>> NCY
 if(U9RxFBufPo!=U9RxFBufPi)
 	{
 	bcopy(&(U9RxFBuf[U9RxFBufPo][0]),&(Trans_Alt_Recieve),sizeof(Trans_Alt_Recieve));
@@ -66,10 +62,6 @@ if(U9RxFBufPo!=U9RxFBufPi)
 
 		}
 	}
-<<<<<<< HEAD
-}
-=======
->>>>>>> NCY
 }
 
 
