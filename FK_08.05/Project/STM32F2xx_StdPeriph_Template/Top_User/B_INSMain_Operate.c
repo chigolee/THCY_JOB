@@ -348,6 +348,10 @@ if(UARxFBufPo!=UARxFBufPi)
 		
 	}
 
+<<<<<<< HEAD
+=======
+		
+>>>>>>> NCY
 }
 
 
