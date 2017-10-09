@@ -253,6 +253,101 @@ DEF_UINT32		GNSS_Store_Uint32[2];			//转换用
 /*--------GNSS接收机，数据接收任务---------*/
 void Task_GNSS_Recieve()
 {
+//接收数据，Trans_GNSS_Recieve[120]
+if(UARxFBufPo!=UARxFBufPi)
+	{
+	
+	bcopy(&(UARxFBuf[UARxFBufPo][0]),&(Trans_GNSS_Recieve[0]),(UARxFBuf[UARxFBufPo][UA_RxF_Len]%(UA_RxF_Len+1)));
+	UARxFBufPo=(UARxFBufPo+1)%UA_RxF_BufLen;
+
+//得到CRC校验
+	GNSS_CRC_ByteCount=0;
+	GNSS_CRC_Uint32=0;		//校验和字节计数清零
+
+	if((Trans_GNSS_Recieve[0]==0xAA)&&(Trans_GNSS_Recieve[1]==0x44))
+		{
+		bcopy(&(Trans_GNSS_Recieve[8]),&GNSS_Store_Uint16,2);
+		GNSS_CRC_ByteCount=GNSS_Store_Uint16+28;
+
+		if(GNSS_CRC_ByteCount<=(UA_RxF_Len-4))
+			{
+			GNSS_CRC_Uint32=CalculateBlockCRC32((DEF_UINT8*)&(Trans_GNSS_Recieve[0]),(DEF_UINT32)(GNSS_CRC_ByteCount));
+			bcopy(&(Trans_GNSS_Recieve[GNSS_CRC_ByteCount]),&(GNSS_Store_Uint32[0]),4);
+
+			//数据处理Trans_GNSS_Recieve[]
+			bcopy(&(Trans_GNSS_Recieve[4]),&(GNSS_Store_Uint16),2);
+
+			if(GNSS_CRC_Uint32==GNSS_Store_Uint32[0])
+				{
+				DelaySecond_Healthy[3][1]=0;		//超时计数置0		
+
+				switch(GNSS_Store_Uint16)
+					{
+					//副帧1
+					case 42:		{
+
+								bcopy(&(Trans_GNSS_Recieve[14]),&(g_YC_Package.TJ.GNSS_GPS_week),2);
+								bcopy(&(Trans_GNSS_Recieve[16]),&(g_YC_Package.TJ.GNSS_GPS_millisecond),4);
+								
+								g_YC_Package.TJ.GNSS_ReceiverState=((Trans_GNSS_Recieve[22])&(0x08))/0x08;
+								g_YC_Package.TJ.GNNS_AlignType=Trans_GNSS_Recieve[32];
+								bcopy(&(Trans_GNSS_Recieve[36]),&(GNSS_Store_Double64[0]),24);
+								g_YC_Package.TJ.GNSS_GPSLat=(DEF_FLOAT32)(GNSS_Store_Double64[0]);
+								g_YC_Package.TJ.GNSS_GPSLon=(DEF_FLOAT32)(GNSS_Store_Double64[1]);
+								g_YC_Package.TJ.GNSS_GPSAlt=(DEF_INT16)(GNSS_Store_Double64[2]);
+
+								bcopy(&(Trans_GNSS_Recieve[68]),&(GNSS_Store_Float32[0]),12);
+								if(GNSS_Store_Float32[0]<0xFF){g_YCLowPack.JC01.GNSS_Lat_Deviation=(DEF_UINT8)(GNSS_Store_Float32[0]);}else{g_YCLowPack.JC01.GNSS_Lat_Deviation=0xFF;}
+								if(GNSS_Store_Float32[1]<0xFF){g_YCLowPack.JC01.GNSS_Lon_Deviation=(DEF_UINT8)(GNSS_Store_Float32[1]);}else{g_YCLowPack.JC01.GNSS_Lon_Deviation=0xFF;}
+								if(GNSS_Store_Float32[2]<0xFF){g_YCLowPack.JC01.GNSS_InsAlt_Deviation=(DEF_UINT8)(GNSS_Store_Float32[2]);}else{g_YCLowPack.JC01.GNSS_InsAlt_Deviation=0xFF;}
+						
+								g_YC_Package.TJ.GNSS_SatelTrackNumber=Trans_GNSS_Recieve[92];
+								g_YC_Package.TJ.GNSS_SatelSolveNumber=Trans_GNSS_Recieve[93];
+
+								break;}
+					//副帧2---正常
+					case 963:		
+								{
+
+								bcopy(&(Trans_GNSS_Recieve[14]),&(g_YC_Package.TJ.GNSS_GPS_week),2);
+								bcopy(&(Trans_GNSS_Recieve[16]),&(g_YC_Package.TJ.GNSS_GPS_millisecond),4);
+
+								bcopy(&(Trans_GNSS_Recieve[32]),&(GNSS_Store_Float32[0]),4);
+								g_YCLowPack.JC01.GNSS_CompuTempra=GNSS_Store_Float32[0]+80;
+								g_YCLowPack.JC01.GNSS_TempMeaState=((g_YCLowPack.JC01.GNSS_TempMeaState)&(0xF0))+(Trans_GNSS_Recieve[36])&0x0F;
+								g_YCLowPack.JC01.GNSS_TempMeaState=((g_YCLowPack.JC01.GNSS_TempMeaState)&(0x0F))+(((Trans_GNSS_Recieve[37])&0x01)*0x10);
+								break;}						
+
+					default: break;
+					}
+
+				}
+
+			}
+
+
+		
+
+
+		//副帧2---超长
+		if((GNSS_Store_Uint16==963)&&(GNSS_CRC_ByteCount>=36))
+			{
+			bcopy(&(Trans_GNSS_Recieve[14]),&(g_YC_Package.TJ.GNSS_GPS_week),2);
+			bcopy(&(Trans_GNSS_Recieve[16]),&(g_YC_Package.TJ.GNSS_GPS_millisecond),4);
+
+			bcopy(&(Trans_GNSS_Recieve[32]),&(GNSS_Store_Float32[0]),4);
+			g_YCLowPack.JC01.GNSS_CompuTempra=GNSS_Store_Float32[0]+80;
+			g_YCLowPack.JC01.GNSS_TempMeaState=((g_YCLowPack.JC01.GNSS_TempMeaState)&(0xF0))+(Trans_GNSS_Recieve[36])&0x0F;
+			g_YCLowPack.JC01.GNSS_TempMeaState=((g_YCLowPack.JC01.GNSS_TempMeaState)&(0x0F))+(((Trans_GNSS_Recieve[37])&0x01)*0x10);
+			}
+
+
+		}
+
+
+		
+	}
+
 }
 
 

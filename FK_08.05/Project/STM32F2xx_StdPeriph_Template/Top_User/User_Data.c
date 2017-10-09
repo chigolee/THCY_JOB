@@ -125,7 +125,7 @@ if(SignForResetTest==1)
 		Task_Airscrew_Recieve(2);
 		Task_Airscrew_Recieve(3);
 		Task_Airscrew_Recieve(4);
-		Task_Airscrew_Recieve(5);}
+		}
 
 	if(g_TimeCount%5==0)				
 		{Task_LlinkCK_Reiceive();}		/*--L∆µ∂Œ--“£øÿ÷∏¡ÓΩ” ’--*/
